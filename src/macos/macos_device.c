@@ -18,6 +18,7 @@
 #include <sys/disk.h>
 #include <sys/mount.h>
 #include <sys/ioctl.h>
+#include <errno.h>
 #include <IOKit/IOBSD.h>
 #include <IOKit/storage/IOBlockStorageDriver.h>
 #include <IOKit/storage/IOCDMedia.h>
@@ -37,6 +38,9 @@ bool macos_get_usb_devices(macos_remus_drive drives[], int *num_drives) {
     
     *num_drives = 0;
     
+    printf("DEBUG: Starting USB device enumeration\n");
+    printf("DEBUG: Running as UID: %d, GID: %d\n", getuid(), getgid());
+    
     // Create a matching dictionary for IOMedia objects
     matching_dict = IOServiceMatching(kIOMediaClass);
     if (matching_dict == NULL) {
@@ -55,58 +59,86 @@ bool macos_get_usb_devices(macos_remus_drive drives[], int *num_drives) {
     }
     
     // Iterate through the matching services
+    printf("DEBUG: Starting device iteration\n");
     while ((media = IOIteratorNext(iter)) && (drive_count < MAX_DRIVES)) {
         CFMutableDictionaryRef properties = NULL;
         
         kr = IORegistryEntryCreateCFProperties(media, &properties, 
                                                kCFAllocatorDefault, kNilOptions);
         if (kr != KERN_SUCCESS) {
+            printf("DEBUG: Could not get properties for media object\n");
             IOObjectRelease(media);
             continue;
         }
         
-        // Check if this is a removable device
-        CFBooleanRef removable = (CFBooleanRef)CFDictionaryGetValue(properties, 
-                                                                    CFSTR(kIOMediaRemovableKey));
-        if (!removable || !CFBooleanGetValue(removable)) {
-            CFRelease(properties);
-            IOObjectRelease(media);
-            continue;
-        }
-        
-        // Get the BSD name (device path)
+        // Get the BSD name (device path) first for debugging
         CFStringRef bsd_name = (CFStringRef)CFDictionaryGetValue(properties, 
                                                                  CFSTR(kIOBSDNameKey));
         if (!bsd_name) {
+            printf("DEBUG: Media object has no BSD name\n");
             CFRelease(properties);
             IOObjectRelease(media);
             continue;
         }
         
         char device_path[256];
-        snprintf(device_path, sizeof(device_path), "/dev/%s", 
-                 CFStringGetCStringPtr(bsd_name, kCFStringEncodingUTF8));
+        const char *bsd_cstr = CFStringGetCStringPtr(bsd_name, kCFStringEncodingUTF8);
+        if (!bsd_cstr) {
+            // Try to get string using CFStringGetCString if direct pointer fails
+            char temp_buffer[256];
+            if (!CFStringGetCString(bsd_name, temp_buffer, sizeof(temp_buffer), kCFStringEncodingUTF8)) {
+                printf("DEBUG: Could not convert BSD name to string\n");
+                CFRelease(properties);
+                IOObjectRelease(media);
+                continue;
+            }
+            snprintf(device_path, sizeof(device_path), "/dev/%s", temp_buffer);
+        } else {
+            snprintf(device_path, sizeof(device_path), "/dev/%s", bsd_cstr);
+        }
+        
+        printf("DEBUG: Found device: %s\n", device_path);
+        // Check if this is a removable device
+        CFBooleanRef removable = (CFBooleanRef)CFDictionaryGetValue(properties, 
+                                                                    CFSTR(kIOMediaRemovableKey));
+        if (!removable || !CFBooleanGetValue(removable)) {
+            printf("DEBUG: Device %s is not removable\n", device_path);
+            CFRelease(properties);
+            IOObjectRelease(media);
+            continue;
+        }
+        
+        printf("DEBUG: Device %s is removable, checking if USB\n", device_path);
         
         // Check if this is a USB device
         if (!macos_is_usb_device(device_path)) {
+            printf("DEBUG: Device %s is not USB\n", device_path);
             CFRelease(properties);
             IOObjectRelease(media);
             continue;
         }
         
+        printf("DEBUG: Device %s passed USB check, adding to list\n", device_path);
         // Initialize the drive structure
-        memset(&drives[drive_count], 0, sizeof(macos_remus_drive));
+        memset(&drives[drive_count], 0, sizeof(struct macos_remus_drive));
         
         // Get device properties
+        printf("DEBUG: Getting device properties for %s\n", device_path);
         if (!macos_get_device_properties(device_path, &drives[drive_count].props)) {
+            printf("DEBUG: Failed to get device properties for %s\n", device_path);
             CFRelease(properties);
             IOObjectRelease(media);
             continue;
         }
+        printf("DEBUG: Successfully got device properties for %s\n", device_path);
         
         // Get device size
+        printf("DEBUG: Getting device size for %s\n", device_path);
         drives[drive_count].size = macos_get_device_size(device_path);
+        printf("DEBUG: Device size for %s: %llu bytes\n", device_path, drives[drive_count].size);
+        
         if (drives[drive_count].size == 0) {
+            printf("DEBUG: Device %s has zero size, skipping\n", device_path);
             CFRelease(properties);
             IOObjectRelease(media);
             continue;
@@ -165,8 +197,11 @@ bool macos_is_usb_device(const char *device_path) {
     CFDictionaryRef description;
     bool is_usb = false;
     
+    
     session = DASessionCreate(kCFAllocatorDefault);
-    if (!session) return false;
+    if (!session) {
+        return false;
+    }
     
     disk = DADiskCreateFromBSDName(kCFAllocatorDefault, session, 
                                    strrchr(device_path, '/') + 1);
@@ -179,14 +214,29 @@ bool macos_is_usb_device(const char *device_path) {
     if (description) {
         CFStringRef bus = (CFStringRef)CFDictionaryGetValue(description, 
                                                             kDADiskDescriptionBusNameKey);
-        if (bus && CFStringCompare(bus, CFSTR("USB"), 0) == kCFCompareEqualTo) {
-            is_usb = true;
+        if (bus) {
+            char bus_name[256];
+            if (CFStringGetCString(bus, bus_name, sizeof(bus_name), kCFStringEncodingUTF8)) {
+                printf("DEBUG: Device %s has bus name: %s\n", device_path, bus_name);
+            }
+            // Check if the bus name contains "usb" (case insensitive)
+            if (bus && (CFStringFind(bus, CFSTR("usb"), kCFCompareCaseInsensitive).location != kCFNotFound ||
+                       CFStringFind(bus, CFSTR("USB"), 0).location != kCFNotFound)) {
+                is_usb = true;
+                printf("DEBUG: Device %s identified as USB\n", device_path);
+            } else {
+                printf("DEBUG: Device %s NOT identified as USB\n", device_path);
+            }
+        } else {
+            printf("DEBUG: Device %s has no bus information\n", device_path);
         }
         CFRelease(description);
+    } else {
     }
     
     CFRelease(disk);
     CFRelease(session);
+    
     return is_usb;
 }
 
@@ -199,21 +249,28 @@ bool macos_get_device_properties(const char *device_path, macos_device_props *pr
     CFDictionaryRef description;
     bool success = false;
     
+    printf("DEBUG: macos_get_device_properties called for %s\n", device_path);
+    
     memset(props, 0, sizeof(macos_device_props));
     strncpy(props->device_path, device_path, sizeof(props->device_path) - 1);
     
     session = DASessionCreate(kCFAllocatorDefault);
-    if (!session) return false;
+    if (!session) {
+        printf("DEBUG: Could not create DA session for %s\n", device_path);
+        return false;
+    }
     
     disk = DADiskCreateFromBSDName(kCFAllocatorDefault, session,
                                    strrchr(device_path, '/') + 1);
     if (!disk) {
+        printf("DEBUG: Could not create DA disk for %s\n", device_path);
         CFRelease(session);
         return false;
     }
     
     description = DADiskCopyDescription(disk);
     if (description) {
+        printf("DEBUG: Got disk description for %s\n", device_path);
         // Check if USB
         CFStringRef bus = (CFStringRef)CFDictionaryGetValue(description, 
                                                             kDADiskDescriptionBusNameKey);
@@ -246,39 +303,67 @@ bool macos_get_device_properties(const char *device_path, macos_device_props *pr
         strncpy(props->vendor_name, "USB", sizeof(props->vendor_name) - 1);
         
         success = true;
+        printf("DEBUG: Device properties successfully retrieved for %s\n", device_path);
         CFRelease(description);
+    } else {
+        printf("DEBUG: Could not get disk description for %s\n", device_path);
     }
     
     CFRelease(disk);
     CFRelease(session);
+    
+    printf("DEBUG: macos_get_device_properties returning %s for %s\n", 
+           success ? "true" : "false", device_path);
     return success;
 }
 
 /*
- * Get device size in bytes
+ * Get device size in bytes using IOKit (no root privileges needed)
  */
 uint64_t macos_get_device_size(const char *device_path) {
-    int fd;
+    printf("DEBUG: macos_get_device_size called for %s\n", device_path);
+    
+    // Create DiskArbitration session
+    DASessionRef session = DASessionCreate(kCFAllocatorDefault);
+    if (!session) {
+        printf("DEBUG: Failed to create DA session\n");
+        return 0;
+    }
+    
+    // Create disk reference from device path
+    DADiskRef disk = DADiskCreateFromBSDName(kCFAllocatorDefault, session, device_path + 5); // Skip "/dev/"
+    if (!disk) {
+        printf("DEBUG: Failed to create disk reference for %s\n", device_path);
+        CFRelease(session);
+        return 0;
+    }
+    
+    // Get disk description
+    CFDictionaryRef description = DADiskCopyDescription(disk);
+    if (!description) {
+        printf("DEBUG: Failed to get disk description for %s\n", device_path);
+        CFRelease(disk);
+        CFRelease(session);
+        return 0;
+    }
+    
+    // Get media size
+    CFNumberRef media_size = (CFNumberRef)CFDictionaryGetValue(description, kDADiskDescriptionMediaSizeKey);
     uint64_t size = 0;
     
-    fd = open(device_path, O_RDONLY);
-    if (fd == -1) {
-        return 0;
+    if (media_size && CFNumberGetValue(media_size, kCFNumberSInt64Type, &size)) {
+        printf("DEBUG: Got media size for %s: %llu bytes\n", device_path, size);
+    } else {
+        printf("DEBUG: Failed to get media size for %s\n", device_path);
+        size = 0;
     }
     
-    if (ioctl(fd, DKIOCGETBLOCKSIZE, &size) == -1) {
-        close(fd);
-        return 0;
-    }
+    // Cleanup
+    CFRelease(description);
+    CFRelease(disk);
+    CFRelease(session);
     
-    uint64_t block_count = 0;
-    if (ioctl(fd, DKIOCGETBLOCKCOUNT, &block_count) == -1) {
-        close(fd);
-        return 0;
-    }
-    
-    close(fd);
-    return size * block_count;
+    return size;
 }
 
 /*

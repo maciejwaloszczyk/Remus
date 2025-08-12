@@ -56,10 +56,10 @@ typedef struct macos_remus_drive {
     int partition_type;
     bool has_protective_mbr;
     macos_device_props props;
-} macos_rufus_drive;
+} macos_remus_drive;
 
 /* Function declarations */
-bool macos_get_usb_devices(macos_rufus_drive drives[], int *num_drives);
+bool macos_get_usb_devices(macos_remus_drive drives[], int *num_drives);
 bool macos_is_usb_device(const char *device_path);
 bool macos_get_device_properties(const char *device_path, macos_device_props *props);
 uint64_t macos_get_device_size(const char *device_path);

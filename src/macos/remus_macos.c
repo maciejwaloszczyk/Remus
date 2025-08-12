@@ -1,6 +1,5 @@
 /*
  * Remus: The Reliable USB Formatting Utility for macOS
- * Main application for macOS * Rufus macOS: The Reliable USB Formatting Utility for macOS
  * Main application file for macOS
  * Copyright © 2025 Maciej Wałoszczyk
  *
@@ -35,10 +34,12 @@ void print_usage(const char *progname) {
     printf("  -n, --name LABEL        Volume label\n");
     printf("  -i, --iso IMAGE         ISO image to write (future feature)\n");
     printf("  -v, --verbose           Verbose output\n");
+    printf("  -y, --yes               Answer yes to all prompts\n");
     printf("  -h, --help              Show this help message\n");
     printf("\nExample:\n");
     printf("  %s -l                                    # List USB devices\n", progname);
     printf("  %s -d disk2 -f FAT32 -n MY_USB          # Format disk2 as FAT32\n", progname);
+    printf("  %s -d disk2 -f FAT32 -n MY_USB -y       # Format without prompts\n", progname);
     printf("\nWARNING: This will erase all data on the selected device!\n");
 }
 
@@ -86,7 +87,7 @@ macos_remus_drive *find_device_by_name(const char *device_name) {
     return NULL;
 }
 
-bool format_device(const char *device_name, const char *fs_type, const char *label) {
+bool format_device(const char *device_name, const char *fs_type, const char *label, bool auto_yes) {
     macos_remus_drive *drive = find_device_by_name(device_name);
     
     if (!drive) {
@@ -100,14 +101,18 @@ bool format_device(const char *device_name, const char *fs_type, const char *lab
     printf("Filesystem: %s\n", fs_type);
     printf("Label: %s\n", label ? label : "USB_DRIVE");
     
-    printf("\nDo you want to continue? (y/N): ");
-    fflush(stdout);
-    
-    char response[10];
-    if (!fgets(response, sizeof(response), stdin) || 
-        (response[0] != 'y' && response[0] != 'Y')) {
-        printf("Operation cancelled.\n");
-        return false;
+    if (!auto_yes) {
+        printf("\nDo you want to continue? (y/N): ");
+        fflush(stdout);
+        
+        char response[10];
+        if (!fgets(response, sizeof(response), stdin) || 
+            (response[0] != 'y' && response[0] != 'Y')) {
+            printf("Operation cancelled.\n");
+            return false;
+        }
+    } else {
+        printf("\nProceeding automatically (--yes flag used)...\n");
     }
     
     printf("\nFormatting device...\n");
@@ -135,6 +140,7 @@ int main(int argc, char *argv[]) {
     int opt;
     bool list_devices = false;
     bool verbose = false;
+    bool auto_yes = false;  // New flag for --yes
     char *device_name = NULL;
     char *fs_type = "FAT32";  // Default filesystem
     char *label = NULL;
@@ -147,6 +153,7 @@ int main(int argc, char *argv[]) {
         {"name", required_argument, 0, 'n'},
         {"iso", required_argument, 0, 'i'},
         {"verbose", no_argument, 0, 'v'},
+        {"yes", no_argument, 0, 'y'},  // New yes flag
         {"help", no_argument, 0, 'h'},
         {0, 0, 0, 0}
     };
@@ -161,7 +168,7 @@ int main(int argc, char *argv[]) {
     printf("Copyright © 2025 Maciej Wałoszczyk\n\n");
     
     // Parse command line arguments
-    while ((opt = getopt_long(argc, argv, "ld:f:n:i:vh", long_options, NULL)) != -1) {
+    while ((opt = getopt_long(argc, argv, "ld:f:n:i:vyh", long_options, NULL)) != -1) {
         switch (opt) {
             case 'l':
                 list_devices = true;
@@ -181,6 +188,9 @@ int main(int argc, char *argv[]) {
                 break;
             case 'v':
                 verbose = true;
+                break;
+            case 'y':
+                auto_yes = true;
                 break;
             case 'h':
                 print_usage(argv[0]);
@@ -215,7 +225,7 @@ int main(int argc, char *argv[]) {
             return 1;
         }
         
-        bool success = format_device(device_name, fs_type, label);
+        bool success = format_device(device_name, fs_type, label, auto_yes);
         cleanup_drives();
         return success ? 0 : 1;
     }
