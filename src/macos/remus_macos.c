@@ -27,7 +27,7 @@
 #define DBG(fmt, ...) do { } while(0)
 #endif
 
-#define VERSION "4.10-macOS"
+#define VERSION "v0.1.0-alpha"
 #define APPLICATION_NAME "Remus"
 
 static macos_remus_drive drives[MAX_DRIVES];

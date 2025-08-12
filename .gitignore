@@ -98,3 +98,6 @@ Temporary Items
 /dist
 /scripts/package-release.sh
 /scripts/generate_app_icons.sh
+
+# Xcode Derived build artifacts for GUI
+/src/gui/build
