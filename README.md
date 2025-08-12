@@ -15,7 +15,68 @@
 
 This is a macOS port of Rufus - The Reliable USB Formatting Utility.
 
-## About
+## Architecture & Binary Availability
+
+> [!CAUTION]
+> Releases currently ship ONLY an Apple Silicon (arm64) binary. No prebuilt Intel (x86_64) binary is provided. Rosetta cannot execute arm64 code on Intel, so Intel users must compile from source.
+
+> [!WARNING]
+> Please be reminded that this is an early stage of program development, all contributions and comments are very welcome.
+
+### Quick Overview
+| Target | How to Get It |
+|--------|---------------|
+| arm64 (Apple Silicon) | Download release OR build from source |
+| x86_64 (Intel) | Build from source (no prebuilt) |
+| Universal (Fat) | Build both arches, lipo merge |
+
+### Clone (once)
+```bash
+git clone https://github.com/maciejwaloszczyk/Remus.git
+cd Remus/src/macos
+```
+
+### Build: Apple Silicon (arm64)
+```bash
+make clean
+CC="clang -arch arm64 -mmacosx-version-min=11.0" make
+sudo install -m 755 remus /usr/local/bin/remus
+```
+
+### Build: Intel (x86_64)
+```bash
+make clean
+CC="clang -arch x86_64 -mmacosx-version-min=10.12" make
+sudo install -m 755 remus /usr/local/bin/remus
+```
+
+### Create Universal (Fat) Binary
+```bash
+# arm64
+make clean
+CC="clang -arch arm64" make
+mv remus remus-arm64
+# x86_64
+make clean
+CC="clang -arch x86_64" make
+mv remus remus-x86_64
+# merge
+lipo -create -output remus remus-arm64 remus-x86_64
+sudo install -m 755 remus /usr/local/bin/remus
+lipo -info /usr/local/bin/remus
+```
+
+### Verify
+```bash
+file remus
+otool -hv remus | head
+```
+
+### Notes
+- Adjust deployment targets as needed.
+- Prefer overriding via CC / CFLAGS instead of editing the Makefile.
+- GUI expects the CLI at /usr/local/bin/remus.
+- Universal build is optional; single-arch is fine if you only need one platform.
 
 Remus provides both a command-line utility and an early alpha native SwiftUI GUI for macOS that brings core Rufus functionality to the platform.
 
