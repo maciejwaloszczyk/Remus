@@ -3,6 +3,7 @@ import Foundation
 
 struct ContentView: View {
     @StateObject private var viewModel = RemusViewModel()
+    @State private var sheetType: ActiveSheet? = nil
     
     var body: some View {
         VStack(spacing: 0) {
@@ -10,7 +11,7 @@ struct ContentView: View {
             ScrollView {
                 VStack(spacing: 20) {
                     // Header with logo and title
-                    HeaderView()
+                    HeaderView(sheetType: $sheetType)
                     
                     // Drive Properties Section
                     DrivePropertiesSection(viewModel: viewModel)
@@ -33,19 +34,24 @@ struct ContentView: View {
             StatusProgressSection(viewModel: viewModel)
             
             // Action Buttons
-            ActionButtonsSection(viewModel: viewModel)
+            ActionButtonsSection(viewModel: viewModel, sheetType: $sheetType)
         }
         .background(Color(.windowBackgroundColor))
-        .sheet(isPresented: $viewModel.showLog) {
-            LogWindow(viewModel: viewModel, isPresented: $viewModel.showLog)
+        .sheet(item: $sheetType) { item in
+            switch item {
+            case .about: AboutView(isPresented: Binding(get: { sheetType == .about }, set: { if !$0 { sheetType = nil } }))
+            case .settings: SettingsView(isPresented: Binding(get: { sheetType == .settings }, set: { if !$0 { sheetType = nil } }), viewModel: viewModel)
+            case .log: LogView(isPresented: Binding(get: { sheetType == .log }, set: { if !$0 { sheetType = nil } }), viewModel: viewModel)
+            }
         }
-        .onAppear {
-            viewModel.refreshDevices()
-        }
+        .onAppear { viewModel.refreshDevices() }
     }
 }
 
+enum ActiveSheet: Identifiable { case about, settings, log; var id: Int { hashValue } }
+
 struct HeaderView: View {
+    @Binding var sheetType: ActiveSheet?
     var body: some View {
         HStack {
             Image(systemName: "externaldrive.fill")
@@ -64,12 +70,12 @@ struct HeaderView: View {
             
             // Settings and info buttons
             HStack(spacing: 8) {
-                Button(action: { /* Show about */ }) {
+                Button { sheetType = .about } label: {
                     Image(systemName: "info.circle")
                 }
                 .buttonStyle(.plain)
                 
-                Button(action: { /* Show settings */ }) {
+                Button { sheetType = .settings } label: {
                     Image(systemName: "gear")
                 }
                 .buttonStyle(.plain)
@@ -92,8 +98,7 @@ struct DrivePropertiesSection: View {
                     
                     Picker("Device", selection: $viewModel.selectedDevice) {
                         ForEach(viewModel.devices, id: \.devicePath) { device in
-                            Text(device.displayName)
-                                .tag(device as RemusDevice?)
+                            Text(device.displayName).tag(Optional(device))
                         }
                     }
                     .pickerStyle(.menu)
@@ -134,9 +139,9 @@ struct BootSelectionSection: View {
             VStack(spacing: 10) {
                 HStack {
                     Picker("Boot Type", selection: $viewModel.bootType) {
-                        Text("Non bootable").tag(BootType.nonBootable)
-                        Text("Disk or ISO image").tag(BootType.diskImage)
-                        Text("FreeDOS").tag(BootType.freeDOS)
+                        ForEach(BootType.allCases, id: \.self) { bt in
+                            Text(bt.rawValue).tag(bt)
+                        }
                     }
                     .pickerStyle(.menu)
                     .frame(maxWidth: .infinity)
@@ -174,9 +179,9 @@ struct FormatOptionsSection: View {
                         .frame(width: 100, alignment: .leading)
                     
                     Picker("File System", selection: $viewModel.fileSystem) {
-                        Text("FAT32").tag(FileSystem.fat32)
-                        Text("exFAT").tag(FileSystem.exFAT)
-                        Text("NTFS").tag(FileSystem.ntfs)
+                        ForEach(FileSystem.allCases, id: \.self) { fs in
+                            Text(fs.rawValue).tag(fs)
+                        }
                     }
                     .pickerStyle(.menu)
                     
@@ -247,21 +252,18 @@ struct StatusProgressSection: View {
     
     var body: some View {
         VStack(spacing: 8) {
-            // Progress bar
             if viewModel.isOperationInProgress {
                 VStack(spacing: 4) {
-                    ProgressView(value: viewModel.progress, total: 100)
+                    // progress jest w 0..1 więc total = 1
+                    ProgressView(value: viewModel.progress, total: 1.0)
                         .progressViewStyle(.linear)
-                    
                     HStack {
                         Text(viewModel.statusMessage)
                             .font(.caption)
                             .foregroundColor(.secondary)
-                        
                         Spacer()
-                        
                         if viewModel.progress > 0 {
-                            Text("\(Int(viewModel.progress))%")
+                            Text(String(format: "%.1f%%", viewModel.progress * 100.0))
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
@@ -282,6 +284,8 @@ struct StatusProgressSection: View {
 
 struct ActionButtonsSection: View {
     @ObservedObject var viewModel: RemusViewModel
+    @Binding var sheetType: ActiveSheet?
+    private var buttonText: String { viewModel.bootType == BootType.diskImage && !viewModel.imageFile.isEmpty ? "WRITE ISO" : "START" }
     
     var body: some View {
         HStack(spacing: 12) {
@@ -292,7 +296,7 @@ struct ActionButtonsSection: View {
             .disabled(viewModel.isOperationInProgress)
             
             Button("Show Log") {
-                viewModel.showLog.toggle()
+                sheetType = .log
             }
             .buttonStyle(.bordered)
             
@@ -305,8 +309,12 @@ struct ActionButtonsSection: View {
                 .buttonStyle(.bordered)
                 .foregroundColor(.red)
             } else {
-                Button("START") {
-                    viewModel.startFormatting()
+                Button(buttonText) {
+                    if viewModel.bootType == .diskImage && !viewModel.imageFile.isEmpty {
+                        viewModel.startWritingISO()
+                    } else {
+                        viewModel.startFormatting()
+                    }
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(!viewModel.canStartFormatting)
@@ -354,6 +362,76 @@ struct InfoRow: View {
             
             Spacer()
         }
+    }
+}
+
+struct AboutView: View {
+    @Binding var isPresented: Bool
+    private var versionString: String {
+        let v = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
+        let b = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?"
+        return "Version \(v) (Build \(b))"
+    }
+    var body: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "externaldrive.fill")
+                .font(.system(size: 48))
+                .foregroundColor(.blue)
+            Text("Remus")
+                .font(.title.bold())
+            Text(versionString)
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+            Text("Copyright © 2025 Maciej Wałoszczyk")
+                .font(.footnote)
+            Text("Licensed under GPLv3")
+                .font(.footnote)
+                .foregroundColor(.secondary)
+            Button("Close") { isPresented = false }
+                .keyboardShortcut(.cancelAction)
+        }
+        .frame(minWidth: 320, minHeight: 300)
+        .padding()
+    }
+}
+
+struct SettingsView: View {
+    @Binding var isPresented: Bool
+    @ObservedObject var viewModel: RemusViewModel
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Settings")
+                .font(.headline)
+            Form {
+                Section("General") {
+                    Toggle("Quick format by default", isOn: $viewModel.quickFormat)
+                }
+                Section("Advanced") {
+                    Toggle("Show advanced format options", isOn: $viewModel.showAdvancedOptions)
+                    Button("Request Full Disk Access…") { viewModel.triggerManualDiskAccessRequest() }
+                        .help("Use only if device detection fails.")
+                }
+            }
+            .frame(minWidth: 420, minHeight: 320)
+            HStack { Spacer(); Button("Close") { isPresented = false } }
+        }
+        .padding()
+    }
+}
+
+struct LogView: View {
+    @Binding var isPresented: Bool
+    @ObservedObject var viewModel: RemusViewModel
+    var body: some View {
+        VStack(alignment: .leading) {
+            Text("Log").font(.headline)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(viewModel.logMessages, id: \.self) { Text($0).font(.caption.monospaced()) }
+                }
+            }
+            HStack { Spacer(); Button("Close") { isPresented = false } }
+        }.padding().frame(minWidth: 500, minHeight: 400)
     }
 }
 

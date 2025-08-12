@@ -1,0 +1,32 @@
+{
+  "source": "/Users/maciejwaloszczyk/Programowanie/GitHub/Remus/src/gui/Remus/LogWindow.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Remus Log",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 11
+        }
+      },
+      {
+        "comment": "",
+        "key": "Clear",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 16
+        }
+      },
+      {
+        "comment": "",
+        "key": "Close",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 21
+        }
+      }
+    ]
+  },
+  "version": 1
+}

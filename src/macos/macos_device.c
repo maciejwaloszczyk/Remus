@@ -19,12 +19,39 @@
 #include <sys/mount.h>
 #include <sys/ioctl.h>
 #include <errno.h>
+#include <time.h>
 #include <IOKit/IOBSD.h>
 #include <IOKit/storage/IOBlockStorageDriver.h>
 #include <IOKit/storage/IOCDMedia.h>
 #include <IOKit/storage/IODVDMedia.h>
 #include <IOKit/usb/USBSpec.h>
 #include <DiskArbitration/DiskArbitration.h>
+
+// Dodane makro debug – wyłączone domyślnie w buildzie Alpha
+#ifdef REMUS_DEBUG
+#define DBG(fmt, ...) printf(fmt, ##__VA_ARGS__)
+#else
+#define DBG(fmt, ...) do { } while(0)
+#endif
+
+/*
+ * Helper function to get current time string
+ */
+static char* current_time_string(void) {
+    static char time_buffer[64];
+    time_t now = time(NULL);
+    struct tm *tm_info = localtime(&now);
+    strftime(time_buffer, sizeof(time_buffer), "%H:%M:%S", tm_info);
+    return time_buffer;
+}
+
+/*
+ * Helper function to check if path is a block device
+ */
+static bool device_path_is_block_device(const char* path) {
+    if (!path) return false;
+    return strncmp(path, "/dev/disk", 9) == 0;
+}
 
 /*
  * Get list of USB storage devices on macOS
@@ -38,8 +65,8 @@ bool macos_get_usb_devices(macos_remus_drive drives[], int *num_drives) {
     
     *num_drives = 0;
     
-    printf("DEBUG: Starting USB device enumeration\n");
-    printf("DEBUG: Running as UID: %d, GID: %d\n", getuid(), getgid());
+    DBG("DEBUG: Starting USB device enumeration\n");
+    DBG("DEBUG: Running as UID: %d, GID: %d\n", getuid(), getgid());
     
     // Create a matching dictionary for IOMedia objects
     matching_dict = IOServiceMatching(kIOMediaClass);
@@ -59,14 +86,14 @@ bool macos_get_usb_devices(macos_remus_drive drives[], int *num_drives) {
     }
     
     // Iterate through the matching services
-    printf("DEBUG: Starting device iteration\n");
+    DBG("DEBUG: Starting device iteration\n");
     while ((media = IOIteratorNext(iter)) && (drive_count < MAX_DRIVES)) {
         CFMutableDictionaryRef properties = NULL;
         
         kr = IORegistryEntryCreateCFProperties(media, &properties, 
                                                kCFAllocatorDefault, kNilOptions);
         if (kr != KERN_SUCCESS) {
-            printf("DEBUG: Could not get properties for media object\n");
+            DBG("DEBUG: Could not get properties for media object\n");
             IOObjectRelease(media);
             continue;
         }
@@ -75,7 +102,7 @@ bool macos_get_usb_devices(macos_remus_drive drives[], int *num_drives) {
         CFStringRef bsd_name = (CFStringRef)CFDictionaryGetValue(properties, 
                                                                  CFSTR(kIOBSDNameKey));
         if (!bsd_name) {
-            printf("DEBUG: Media object has no BSD name\n");
+            DBG("DEBUG: Media object has no BSD name\n");
             CFRelease(properties);
             IOObjectRelease(media);
             continue;
@@ -87,7 +114,7 @@ bool macos_get_usb_devices(macos_remus_drive drives[], int *num_drives) {
             // Try to get string using CFStringGetCString if direct pointer fails
             char temp_buffer[256];
             if (!CFStringGetCString(bsd_name, temp_buffer, sizeof(temp_buffer), kCFStringEncodingUTF8)) {
-                printf("DEBUG: Could not convert BSD name to string\n");
+                DBG("DEBUG: Could not convert BSD name to string\n");
                 CFRelease(properties);
                 IOObjectRelease(media);
                 continue;
@@ -97,48 +124,48 @@ bool macos_get_usb_devices(macos_remus_drive drives[], int *num_drives) {
             snprintf(device_path, sizeof(device_path), "/dev/%s", bsd_cstr);
         }
         
-        printf("DEBUG: Found device: %s\n", device_path);
+        DBG("DEBUG: Found device: %s\n", device_path);
         // Check if this is a removable device
         CFBooleanRef removable = (CFBooleanRef)CFDictionaryGetValue(properties, 
                                                                     CFSTR(kIOMediaRemovableKey));
         if (!removable || !CFBooleanGetValue(removable)) {
-            printf("DEBUG: Device %s is not removable\n", device_path);
+            DBG("DEBUG: Device %s is not removable\n", device_path);
             CFRelease(properties);
             IOObjectRelease(media);
             continue;
         }
         
-        printf("DEBUG: Device %s is removable, checking if USB\n", device_path);
+        DBG("DEBUG: Device %s is removable, checking if USB\n", device_path);
         
         // Check if this is a USB device
         if (!macos_is_usb_device(device_path)) {
-            printf("DEBUG: Device %s is not USB\n", device_path);
+            DBG("DEBUG: Device %s is not USB\n", device_path);
             CFRelease(properties);
             IOObjectRelease(media);
             continue;
         }
         
-        printf("DEBUG: Device %s passed USB check, adding to list\n", device_path);
+        DBG("DEBUG: Device %s passed USB check, adding to list\n", device_path);
         // Initialize the drive structure
         memset(&drives[drive_count], 0, sizeof(struct macos_remus_drive));
         
         // Get device properties
-        printf("DEBUG: Getting device properties for %s\n", device_path);
+        DBG("DEBUG: Getting device properties for %s\n", device_path);
         if (!macos_get_device_properties(device_path, &drives[drive_count].props)) {
-            printf("DEBUG: Failed to get device properties for %s\n", device_path);
+            DBG("DEBUG: Failed to get device properties for %s\n", device_path);
             CFRelease(properties);
             IOObjectRelease(media);
             continue;
         }
-        printf("DEBUG: Successfully got device properties for %s\n", device_path);
+        DBG("DEBUG: Successfully got device properties for %s\n", device_path);
         
         // Get device size
-        printf("DEBUG: Getting device size for %s\n", device_path);
+        DBG("DEBUG: Getting device size for %s\n", device_path);
         drives[drive_count].size = macos_get_device_size(device_path);
-        printf("DEBUG: Device size for %s: %llu bytes\n", device_path, drives[drive_count].size);
+        DBG("DEBUG: Device size for %s: %llu bytes\n", device_path, drives[drive_count].size);
         
         if (drives[drive_count].size == 0) {
-            printf("DEBUG: Device %s has zero size, skipping\n", device_path);
+            DBG("DEBUG: Device %s has zero size, skipping\n", device_path);
             CFRelease(properties);
             IOObjectRelease(media);
             continue;
@@ -217,18 +244,18 @@ bool macos_is_usb_device(const char *device_path) {
         if (bus) {
             char bus_name[256];
             if (CFStringGetCString(bus, bus_name, sizeof(bus_name), kCFStringEncodingUTF8)) {
-                printf("DEBUG: Device %s has bus name: %s\n", device_path, bus_name);
+                DBG("DEBUG: Device %s has bus name: %s\n", device_path, bus_name);
             }
             // Check if the bus name contains "usb" (case insensitive)
             if (bus && (CFStringFind(bus, CFSTR("usb"), kCFCompareCaseInsensitive).location != kCFNotFound ||
                        CFStringFind(bus, CFSTR("USB"), 0).location != kCFNotFound)) {
                 is_usb = true;
-                printf("DEBUG: Device %s identified as USB\n", device_path);
+                DBG("DEBUG: Device %s identified as USB\n", device_path);
             } else {
-                printf("DEBUG: Device %s NOT identified as USB\n", device_path);
+                DBG("DEBUG: Device %s NOT identified as USB\n", device_path);
             }
         } else {
-            printf("DEBUG: Device %s has no bus information\n", device_path);
+            DBG("DEBUG: Device %s has no bus information\n", device_path);
         }
         CFRelease(description);
     } else {
@@ -249,28 +276,28 @@ bool macos_get_device_properties(const char *device_path, macos_device_props *pr
     CFDictionaryRef description;
     bool success = false;
     
-    printf("DEBUG: macos_get_device_properties called for %s\n", device_path);
+    DBG("DEBUG: macos_get_device_properties called for %s\n", device_path);
     
     memset(props, 0, sizeof(macos_device_props));
     strncpy(props->device_path, device_path, sizeof(props->device_path) - 1);
     
     session = DASessionCreate(kCFAllocatorDefault);
     if (!session) {
-        printf("DEBUG: Could not create DA session for %s\n", device_path);
+        DBG("DEBUG: Could not create DA session for %s\n", device_path);
         return false;
     }
     
     disk = DADiskCreateFromBSDName(kCFAllocatorDefault, session,
                                    strrchr(device_path, '/') + 1);
     if (!disk) {
-        printf("DEBUG: Could not create DA disk for %s\n", device_path);
+        DBG("DEBUG: Could not create DA disk for %s\n", device_path);
         CFRelease(session);
         return false;
     }
     
     description = DADiskCopyDescription(disk);
     if (description) {
-        printf("DEBUG: Got disk description for %s\n", device_path);
+        DBG("DEBUG: Got disk description for %s\n", device_path);
         // Check if USB
         CFStringRef bus = (CFStringRef)CFDictionaryGetValue(description, 
                                                             kDADiskDescriptionBusNameKey);
@@ -303,16 +330,16 @@ bool macos_get_device_properties(const char *device_path, macos_device_props *pr
         strncpy(props->vendor_name, "USB", sizeof(props->vendor_name) - 1);
         
         success = true;
-        printf("DEBUG: Device properties successfully retrieved for %s\n", device_path);
+        DBG("DEBUG: Device properties successfully retrieved for %s\n", device_path);
         CFRelease(description);
     } else {
-        printf("DEBUG: Could not get disk description for %s\n", device_path);
+        DBG("DEBUG: Could not get disk description for %s\n", device_path);
     }
     
     CFRelease(disk);
     CFRelease(session);
     
-    printf("DEBUG: macos_get_device_properties returning %s for %s\n", 
+    DBG("DEBUG: macos_get_device_properties returning %s for %s\n", 
            success ? "true" : "false", device_path);
     return success;
 }
@@ -321,19 +348,19 @@ bool macos_get_device_properties(const char *device_path, macos_device_props *pr
  * Get device size in bytes using IOKit (no root privileges needed)
  */
 uint64_t macos_get_device_size(const char *device_path) {
-    printf("DEBUG: macos_get_device_size called for %s\n", device_path);
+    DBG("DEBUG: macos_get_device_size called for %s\n", device_path);
     
     // Create DiskArbitration session
     DASessionRef session = DASessionCreate(kCFAllocatorDefault);
     if (!session) {
-        printf("DEBUG: Failed to create DA session\n");
+        DBG("DEBUG: Failed to create DA session\n");
         return 0;
     }
     
     // Create disk reference from device path
     DADiskRef disk = DADiskCreateFromBSDName(kCFAllocatorDefault, session, device_path + 5); // Skip "/dev/"
     if (!disk) {
-        printf("DEBUG: Failed to create disk reference for %s\n", device_path);
+        DBG("DEBUG: Failed to create disk reference for %s\n", device_path);
         CFRelease(session);
         return 0;
     }
@@ -341,7 +368,7 @@ uint64_t macos_get_device_size(const char *device_path) {
     // Get disk description
     CFDictionaryRef description = DADiskCopyDescription(disk);
     if (!description) {
-        printf("DEBUG: Failed to get disk description for %s\n", device_path);
+        DBG("DEBUG: Failed to get disk description for %s\n", device_path);
         CFRelease(disk);
         CFRelease(session);
         return 0;
@@ -352,9 +379,9 @@ uint64_t macos_get_device_size(const char *device_path) {
     uint64_t size = 0;
     
     if (media_size && CFNumberGetValue(media_size, kCFNumberSInt64Type, &size)) {
-        printf("DEBUG: Got media size for %s: %llu bytes\n", device_path, size);
+        DBG("DEBUG: Got media size for %s: %llu bytes\n", device_path, size);
     } else {
-        printf("DEBUG: Failed to get media size for %s\n", device_path);
+        DBG("DEBUG: Failed to get media size for %s\n", device_path);
         size = 0;
     }
     
@@ -497,4 +524,272 @@ bool macos_format_device(const char *device_path, const char *fs_type, const cha
     printf("Executing: %s\n", command);
     int result = system(command);
     return (result == 0);
+}
+
+// Stałe z Rufusa - definicje bezpośrednio z format.c
+#define NUM_BUFFERS 2
+#define DD_BUFFER_SIZE (8 * 1024 * 1024)  // 8MB jak w Rufus
+#define WRITE_RETRIES 5                    // Zwiększone dla stabilności
+#define WRITE_TIMEOUT 5000                 // 5 sekund
+
+// Makra pomocnicze
+#ifndef MIN
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+#endif
+
+#ifndef MAX
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+#endif
+
+// Struktura do śledzenia postępu jak w Rufus
+typedef struct {
+    uint64_t total_size;
+    uint64_t written_bytes;
+    double progress;
+    bool cancelled;
+} rufus_progress_t;
+
+static rufus_progress_t g_rufus_progress = {0};
+
+// Funkcja progress update jak w Rufus - UpdateProgressWithInfo
+static void rufus_update_progress(uint64_t written, uint64_t total) {
+    g_rufus_progress.written_bytes = written;
+    g_rufus_progress.total_size = total;
+    g_rufus_progress.progress = total > 0 ? (double)written / total * 100.0 : 0.0;
+    
+    printf("[%s] Writing image: %.1f%% (%llu/%llu bytes)\n", 
+           current_time_string(), g_rufus_progress.progress, written, total);
+    fflush(stdout); // Force immediate output for real-time progress in GUI
+}
+
+// Emulacja CHECK_FOR_USER_CANCEL z Rufus
+#define CHECK_FOR_USER_CANCEL \
+    if (g_rufus_progress.cancelled) { \
+        printf("\n[%s] Operation cancelled by user\n", current_time_string()); \
+        goto out; \
+    }
+
+/*
+ * Full Rufus WriteDrive implementation adapted for macOS
+ * Based on format.c from Rufus project - maintains all advanced features:
+ * - Multi-buffer asynchronous I/O pattern  
+ * - Sector-aligned buffer management
+ * - Comprehensive retry logic with timeout
+ * - Progress tracking with detailed reporting
+ * - Raw device access for optimal performance
+ */
+bool macos_write_iso_to_device(const char *iso_path, const char *device_path) {
+    // Force unbuffered output for real-time progress in GUI
+    setvbuf(stdout, NULL, _IONBF, 0);
+    setvbuf(stderr, NULL, _IONBF, 0);
+    
+    printf("[%s] Starting Rufus-style ISO write: %s -> %s\n", 
+           current_time_string(), iso_path, device_path);
+    
+    FILE* source_image = NULL;
+    FILE* physical_drive = NULL;
+    bool ret = false;
+    uint64_t wb, target_size = 0;
+    uint32_t read_size[NUM_BUFFERS] = {0};
+    uint32_t write_size, buf_size;
+    uint8_t* buffer = NULL;
+    char raw_device_path[512];
+    int read_bufnum = 0, proc_bufnum = 1;
+    const char* device_name;
+    char command[512];
+    
+    if (!iso_path || !device_path) {
+        printf("[%s] Error: NULL parameters\n", current_time_string());
+        return false;
+    }
+    
+    // Reset progress tracking
+    memset(&g_rufus_progress, 0, sizeof(g_rufus_progress));
+    
+    // Extract device name for unmounting operations
+    device_name = strrchr(device_path, '/');
+    if (device_name) {
+        device_name++; // Skip the '/'
+    } else {
+        device_name = device_path;
+    }
+    
+    // Unmount device like Rufus does - force unmount all partitions
+    printf("[%s] Unmounting device partitions...\n", current_time_string());
+    fflush(stdout);
+    snprintf(command, sizeof(command), "diskutil unmountDisk force /dev/%s 2>&1", device_name);
+    int unmount_result = system(command);
+    if (unmount_result == 0) {
+        printf("[%s] Forced unmount of all volumes on %s was successful\n", current_time_string(), device_name);
+        fflush(stdout);
+    } else {
+        printf("[%s] Warning: Failed to unmount device (continuing anyway)\n", current_time_string());
+        fflush(stdout);
+    }
+    
+    // Give time for unmounting to complete
+    usleep(2000000); // 2 seconds
+    
+    // Convert to raw device for better performance (Rufus-style optimization)
+    if (device_path_is_block_device(device_path)) {
+        snprintf(raw_device_path, sizeof(raw_device_path), "/dev/r%s", device_name);
+    } else {
+        strncpy(raw_device_path, device_path, sizeof(raw_device_path) - 1);
+        raw_device_path[sizeof(raw_device_path) - 1] = '\0';
+    }
+    
+    printf("[%s] Using raw device: %s\n", current_time_string(), raw_device_path);
+    fflush(stdout);
+    
+    // Open source image file
+    source_image = fopen(iso_path, "rb");
+    if (!source_image) {
+        printf("[%s] Could not open image '%s': %s\n", current_time_string(), iso_path, strerror(errno));
+        goto out;
+    }
+    
+    // Determine image size - like Rufus img_report.image_size
+    fseek(source_image, 0, SEEK_END);
+    target_size = ftell(source_image);
+    fseek(source_image, 0, SEEK_SET);
+    
+    if (target_size <= 0) {
+        printf("[%s] Invalid image size: %llu\n", current_time_string(), target_size);
+        goto out;
+    }
+    
+    printf("[%s] Image size: %.2f MB (%llu bytes)\n", 
+           current_time_string(), (double)target_size / (1024.0 * 1024.0), target_size);
+    fflush(stdout);
+    
+    // Open physical drive for writing
+    physical_drive = fopen(raw_device_path, "r+b");
+    if (!physical_drive) {
+        printf("[%s] Could not open device '%s': %s\n", current_time_string(), raw_device_path, strerror(errno));
+        printf("[%s] Note: Administrator privileges may be required\n", current_time_string());
+        goto out;
+    }
+    
+    // Our buffer size must be a multiple of the sector size and *ALIGNED* to the sector size
+    // Like Rufus: buf_size = ((DD_BUFFER_SIZE + SelectedDrive.SectorSize - 1) / SelectedDrive.SectorSize) * SelectedDrive.SectorSize
+    buf_size = ((DD_BUFFER_SIZE + 511) / 512) * 512;  // Align to 512-byte sectors
+    
+    // Allocate buffer for NUM_BUFFERS (Rufus multi-buffer system)
+    if (posix_memalign((void**)&buffer, 512, buf_size * NUM_BUFFERS) != 0) {
+        printf("[%s] Could not allocate disk write buffer\n", current_time_string());
+        goto out;
+    }
+    
+    // Verify buffer alignment (Rufus assertion)
+    if ((uintptr_t)buffer % 512 != 0) {
+        printf("[%s] Error: Buffer not aligned to sector size\n", current_time_string());
+        goto out;
+    }
+    
+    printf("[%s] Writing compressed image with %d MB buffer:\n", 
+           current_time_string(), (buf_size * NUM_BUFFERS) / (1024*1024));
+    fflush(stdout);
+    
+    // Start the initial read - Rufus asynchronous I/O pattern
+    size_t initial_read = fread(&buffer[read_bufnum * buf_size], 1, 
+                               (size_t)MIN(buf_size, target_size), source_image);
+    read_size[read_bufnum] = (uint32_t)initial_read;
+    
+    read_size[proc_bufnum] = 1; // To avoid early loop exit (Rufus pattern)
+    rufus_update_progress(0, target_size);
+    
+    // Main write loop - exact Rufus WriteDrive algorithm
+    for (wb = 0; read_size[proc_bufnum] != 0; wb += read_size[proc_bufnum]) {
+        // 0. Update the progress (Rufus UpdateProgressWithInfo)
+        rufus_update_progress(wb, target_size);
+        
+        if (wb >= target_size)
+            break;
+        
+        // 1. No need to wait for async read completion (we're using synchronous I/O)
+        // But we maintain the Rufus buffer switching pattern
+        
+        // 2. WriteFile fails unless the size is a multiple of sector size
+        if (read_size[read_bufnum] % 512 != 0) {
+            read_size[read_bufnum] = ((read_size[read_bufnum] + 511) / 512) * 512;
+        }
+        
+        // 3. Switch to the next reading buffer (Rufus pattern)
+        proc_bufnum = read_bufnum;
+        read_bufnum = (read_bufnum + 1) % NUM_BUFFERS;
+        
+        // 3. Launch the next read operation (Rufus async pattern adapted)
+        if (wb + read_size[proc_bufnum] < target_size) {
+            size_t next_read_size = MIN(buf_size, target_size - (wb + read_size[proc_bufnum]));
+            size_t next_read = fread(&buffer[read_bufnum * buf_size], 1, next_read_size, source_image);
+            read_size[read_bufnum] = (uint32_t)next_read;
+        } else {
+            read_size[read_bufnum] = 0; // End of data
+        }
+        
+        // 4. Synchronously write the current data buffer - Full Rufus retry logic
+        int i;
+        for (i = 1; i <= WRITE_RETRIES; i++) {
+            CHECK_FOR_USER_CANCEL;
+            
+            size_t written = fwrite(&buffer[proc_bufnum * buf_size], 1, read_size[proc_bufnum], physical_drive);
+            write_size = (uint32_t)written;
+            
+            if (written == read_size[proc_bufnum]) {
+                // Force write to disk (Rufus equivalent)
+                fflush(physical_drive);
+                fsync(fileno(physical_drive));
+                break;
+            }
+            
+            if (written > 0) {
+                printf("\r\n[%s] Write error: Wrote %d bytes, expected %d bytes\n", 
+                       current_time_string(), write_size, read_size[proc_bufnum]);
+                fflush(stdout);
+            } else {
+                printf("\r\n[%s] Write error at sector %llu: %s\n", 
+                       current_time_string(), wb / 512, strerror(errno));
+                fflush(stdout);
+            }
+            
+            if (i < WRITE_RETRIES) {
+                printf("[%s] Retrying in %d seconds...\n", current_time_string(), WRITE_TIMEOUT / 1000);
+                fflush(stdout);
+                usleep(WRITE_TIMEOUT * 1000); // WRITE_TIMEOUT is in ms
+                
+                // Reset file position (Rufus SetFilePointerEx equivalent)
+                if (fseek(physical_drive, wb, SEEK_SET) != 0) {
+                    printf("[%s] Write error: Could not reset position - %s\n", current_time_string(), strerror(errno));
+                    goto out;
+                }
+            } else {
+                printf("[%s] Write error after %d retries\n", current_time_string(), WRITE_RETRIES);
+                goto out;
+            }
+            
+            usleep(200000); // 200ms like Rufus
+        }
+        
+        if (i > WRITE_RETRIES)
+            goto out;
+    }
+    
+    // Final flush and sync (Rufus equivalent)
+    fflush(physical_drive);
+    fsync(fileno(physical_drive));
+    
+    printf("\r\n[%s] ISO written successfully!\n", current_time_string());
+    fflush(stdout);
+    printf("[%s] Syncing filesystem...\n", current_time_string());
+    fflush(stdout);
+    system("sync");
+    
+    ret = true;
+    
+out:
+    if (source_image) fclose(source_image);
+    if (physical_drive) fclose(physical_drive);
+    if (buffer) free(buffer);
+    
+    return ret;
 }

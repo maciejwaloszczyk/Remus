@@ -1,0 +1,64 @@
+{
+  "buildCommand" : {
+    "command" : "build",
+    "skipDependencies" : false,
+    "style" : "buildOnly"
+  },
+  "configuredTargets" : [
+    {
+      "guid" : "f4efcb3c58e3202adda01a2e61502cd54575ea21d7ca242a2609b92ba0293315"
+    }
+  ],
+  "containerPath" : "/Users/maciejwaloszczyk/Programowanie/GitHub/Remus/src/gui/Remus.xcodeproj",
+  "continueBuildingAfterErrors" : false,
+  "dependencyScope" : "workspace",
+  "enableIndexBuildArena" : false,
+  "hideShellScriptEnvironment" : false,
+  "parameters" : {
+    "action" : "build",
+    "activeArchitecture" : "arm64",
+    "activeRunDestination" : {
+      "disableOnlyActiveArch" : false,
+      "platform" : "macosx",
+      "sdk" : "macosx15.5",
+      "sdkVariant" : "macos",
+      "supportedArchitectures" : [
+        "arm64e",
+        "arm64",
+        "x86_64"
+      ],
+      "targetArchitecture" : "arm64"
+    },
+    "arenaInfo" : {
+      "buildIntermediatesPath" : "/Users/maciejwaloszczyk/Programowanie/GitHub/Remus/src/gui/build/DerivedData/Build/Intermediates.noindex",
+      "buildProductsPath" : "/Users/maciejwaloszczyk/Programowanie/GitHub/Remus/src/gui/build/DerivedData/Build/Products",
+      "derivedDataPath" : "/Users/maciejwaloszczyk/Programowanie/GitHub/Remus/src/gui/build/DerivedData",
+      "indexDataStoreFolderPath" : "/Users/maciejwaloszczyk/Programowanie/GitHub/Remus/src/gui/build/DerivedData/Index.noindex/DataStore",
+      "indexEnableDataStore" : true,
+      "indexPCHPath" : "/Users/maciejwaloszczyk/Programowanie/GitHub/Remus/src/gui/build/DerivedData/Index.noindex/PrecompiledHeaders",
+      "pchPath" : "/Users/maciejwaloszczyk/Programowanie/GitHub/Remus/src/gui/build/DerivedData/Build/Intermediates.noindex/PrecompiledHeaders"
+    },
+    "configurationName" : "Release",
+    "overrides" : {
+      "commandLine" : {
+        "table" : {
+          "BUILD_DIR" : "/Users/maciejwaloszczyk/Programowanie/GitHub/Remus/src/gui/build"
+        }
+      },
+      "synthesized" : {
+        "table" : {
+          "ACTION" : "build",
+          "ENABLE_PREVIEWS" : "NO",
+          "ENABLE_XOJIT_PREVIEWS" : "YES",
+          "ONLY_ACTIVE_ARCH" : "YES"
+        }
+      }
+    }
+  },
+  "schemeCommand" : "launch",
+  "showNonLoggedProgress" : true,
+  "useDryRun" : false,
+  "useImplicitDependencies" : true,
+  "useLegacyBuildLocations" : false,
+  "useParallelTargets" : true
+}

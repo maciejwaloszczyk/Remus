@@ -93,3 +93,8 @@ Icon
 Network Trash Folder
 Temporary Items
 .apdisk
+
+# Release packaging artifacts
+/dist
+/scripts/package-release.sh
+/scripts/generate_app_icons.sh

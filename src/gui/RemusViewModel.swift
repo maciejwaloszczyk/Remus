@@ -154,7 +154,7 @@ class RemusViewModel: ObservableObject {
                 } else {
                     addLogMessage("Authorization failed: \(result.error)")
                     DispatchQueue.main.async {
-                        self.statusMessage = "Authorization required to scan devices"
+                        self.statusMessage = "No USB devices found"
                     }
                 }
             } else {

@@ -92,8 +92,8 @@ clean_build() {
         log_info "Removed build directory"
     fi
     
-    if [ -f "$PROJECT_DIR/src/macos/rufus-macos" ]; then
-        rm -f "$PROJECT_DIR/src/macos/rufus-macos"
+    if [ -f "$PROJECT_DIR/src/macos/remus" ]; then
+        rm -f "$PROJECT_DIR/src/macos/remus"
         log_info "Removed executable"
     fi
     
@@ -114,15 +114,15 @@ build_application() {
     fi
     
     # Verify executable was created
-    if [ ! -f "rufus-macos" ]; then
+    if [ ! -f "remus" ]; then
         log_error "Executable not found after build"
         exit 1
     fi
     
     # Show file info
     log_info "Executable info:"
-    ls -la rufus-macos
-    file rufus-macos
+    ls -la remus
+    file remus
 }
 
 # Run tests
@@ -133,7 +133,7 @@ run_tests() {
     
     # Test help
     log_info "Testing help output..."
-    if ./rufus-macos --help > /dev/null; then
+    if ./remus --help > /dev/null; then
         log_success "Help test passed"
     else
         log_warning "Help test failed"
@@ -141,7 +141,7 @@ run_tests() {
     
     # Test device listing (may fail if no USB devices)
     log_info "Testing device listing..."
-    ./rufus-macos --list || log_warning "Device listing test completed (may be normal if no USB devices)"
+    ./remus --list || log_warning "Device listing test completed (may be normal if no USB devices)"
     
     log_success "Tests completed"
 }
@@ -151,14 +151,14 @@ create_package() {
     log_info "Creating distribution package..."
     
     local dist_dir="$PROJECT_DIR/dist"
-    local pkg_dir="$dist_dir/rufus-macos-$VERSION"
+    local pkg_dir="$dist_dir/remus-$VERSION"
     
     # Create directories
     mkdir -p "$pkg_dir/bin"
     mkdir -p "$pkg_dir/docs"
     
     # Copy executable
-    cp "$PROJECT_DIR/src/macos/rufus-macos" "$pkg_dir/bin/"
+    cp "$PROJECT_DIR/src/macos/remus" "$pkg_dir/bin/"
     
     # Copy documentation
     cp "$PROJECT_DIR/README_macOS.md" "$pkg_dir/docs/"
@@ -169,12 +169,12 @@ create_package() {
 $PROJECT_NAME $VERSION
 
 Installation:
-1. Copy rufus-macos from bin/ to /usr/local/bin/ (requires sudo)
+1. Copy remus from bin/ to /usr/local/bin/ (requires sudo)
 2. Make sure /usr/local/bin is in your PATH
 
 Usage:
-  rufus-macos -l              # List USB devices  
-  rufus-macos -d disk2 -f FAT32  # Format device
+  remus -l              # List USB devices  
+  remus -d disk2 -f FAT32  # Format device
 
 For more information, see docs/README_macOS.md
 
@@ -183,12 +183,12 @@ EOF
     
     # Create tarball
     cd "$dist_dir"
-    tar -czf "rufus-macos-$VERSION.tar.gz" "rufus-macos-$VERSION"
+    tar -czf "remus-$VERSION.tar.gz" "remus-$VERSION"
     
-    log_success "Package created: dist/rufus-macos-$VERSION.tar.gz"
+    log_success "Package created: dist/remus-$VERSION.tar.gz"
     
     # Show package info
-    ls -la "rufus-macos-$VERSION.tar.gz"
+    ls -la "remus-$VERSION.tar.gz"
 }
 
 # Install the application
@@ -197,7 +197,7 @@ install_application() {
     
     local install_dir="${INSTALL_BINDIR:-/usr/local/bin}"
     
-    if [ ! -f "$PROJECT_DIR/src/macos/rufus-macos" ]; then
+    if [ ! -f "$PROJECT_DIR/src/macos/remus" ]; then
         log_error "Executable not found. Run build first."
         exit 1
     fi
@@ -209,11 +209,11 @@ install_application() {
     fi
     
     # Copy executable
-    sudo cp "$PROJECT_DIR/src/macos/rufus-macos" "$install_dir/"
-    sudo chmod +x "$install_dir/rufus-macos"
+    sudo cp "$PROJECT_DIR/src/macos/remus" "$install_dir/"
+    sudo chmod +x "$install_dir/remus"
     
-    log_success "Installed to $install_dir/rufus-macos"
-    log_info "You can now run 'rufus-macos' from anywhere"
+    log_success "Installed to $install_dir/remus"
+    log_info "You can now run 'remus' from anywhere"
 }
 
 # Show usage

@@ -67,5 +67,6 @@ char *macos_get_device_label(const char *device_path);
 bool macos_is_device_removable(const char *device_path);
 bool macos_unmount_device(const char *device_path);
 bool macos_format_device(const char *device_path, const char *fs_type, const char *label);
+bool macos_write_iso_to_device(const char *iso_path, const char *device_path);
 
 #endif // MACOS_DEVICE_H
