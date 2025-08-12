@@ -1,0 +1,64 @@
+# Rufus macOS Fork - Build Configuration
+# This allows building both Windows and macOS versions
+
+# Detect the operating system
+UNAME_S := $(shell uname -s)
+
+# Default target
+all: detect_os
+
+# Detect OS and build appropriate version
+detect_os:
+ifeq ($(UNAME_S),Darwin)
+	@echo "Building macOS version..."
+	$(MAKE) -C src/macos
+else ifeq ($(OS),Windows_NT)
+	@echo "Building Windows version..."
+	$(MAKE) -f Makefile.windows
+else
+	@echo "Unsupported operating system: $(UNAME_S)"
+	@echo "Supported: macOS (Darwin), Windows"
+	@exit 1
+endif
+
+# macOS specific targets
+macos:
+	$(MAKE) -C src/macos
+
+macos-clean:
+	$(MAKE) -C src/macos clean
+
+macos-install:
+	$(MAKE) -C src/macos install
+
+macos-test:
+	$(MAKE) -C src/macos test
+
+# Windows targets (for cross-reference)
+windows:
+	@echo "Building Windows version requires Windows environment or cross-compilation"
+	@echo "Use original build system for Windows"
+
+# Clean everything
+clean: macos-clean
+	@echo "Cleaned build artifacts"
+
+# Help target
+help:
+	@echo "Rufus Fork - Multi-platform Build System"
+	@echo ""
+	@echo "Available targets:"
+	@echo "  all          - Auto-detect OS and build appropriate version"
+	@echo "  macos        - Build macOS version"
+	@echo "  macos-clean  - Clean macOS build"
+	@echo "  macos-install- Install macOS version"
+	@echo "  macos-test   - Test macOS version"
+	@echo "  windows      - Build Windows version (Windows only)"
+	@echo "  clean        - Clean all build artifacts"
+	@echo "  help         - Show this help"
+	@echo ""
+	@echo "Platform-specific instructions:"
+	@echo "  macOS: Run 'make macos' to build rufus-macos"
+	@echo "  Windows: Use original Visual Studio solution or MinGW"
+
+.PHONY: all detect_os macos macos-clean macos-install macos-test windows clean help
