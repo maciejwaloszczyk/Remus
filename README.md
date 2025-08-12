@@ -1,64 +1,177 @@
-Rufus: The Reliable USB Formatting Utility
-==========================================
+# Remus: Rufus ported to macOS
 
-[![VS2022 Build Status](https://img.shields.io/github/actions/workflow/status/pbatard/rufus/vs2022.yml?branch=master&style=flat-square&label=VS2022%20Build)](https://github.com/pbatard/rufus/actions/workflows/vs2022.yml)
-[![MinGW Build Status](https://img.shields.io/github/actions/workflow/status/pbatard/rufus/mingw.yml?branch=master&style=flat-square&label=MinGW%20Build)](https://github.com/pbatard/rufus/actions/workflows/mingw.yml)
-[![Coverity Scan Status](https://img.shields.io/coverity/scan/2172.svg?style=flat-square&label=Coverity%20Analysis)](https://scan.coverity.com/projects/pbatard-rufus)  
-[![Latest Release](https://img.shields.io/github/release-pre/pbatard/rufus.svg?style=flat-square&label=Latest%20Release)](https://github.com/pbatard/rufus/releases)
+[![Latest Release](https://img.shields.io/github/release-pre/maciejwaloszczyk/Remus.svg?style=flat-square&label=Latest%20Release)](https://github.com/maciejwaloszczyk/Remus/releases)
 [![Licence](https://img.shields.io/badge/license-GPLv3-blue.svg?style=flat-square&label=License)](https://www.gnu.org/licenses/gpl-3.0.en.html)
-[![Download Stats](https://img.shields.io/github/downloads/pbatard/rufus/total.svg?label=Downloads&style=flat-square)](https://github.com/pbatard/rufus/releases)
-[![Contributors](https://img.shields.io/github/contributors/pbatard/rufus.svg?style=flat-square&label=Contributors)](https://github.com/pbatard/rufus/graphs/contributors)
+[![Status](https://img.shields.io/badge/status-alpha-orange.svg?style=flat-square&label=Status)](https://github.com/maciejwaloszczyk/Remus)
+[![Download Stats](https://img.shields.io/github/downloads/maciejwaloszczyk/Remus/total.svg?label=Downloads&style=flat-square)](https://github.com/maciejwaloszczyk/Remus/releases)
+[![macOS](https://img.shields.io/badge/platform-macOS-blue.svg?style=flat-square)](https://www.apple.com/macos)
+[![Last Commit](https://img.shields.io/github/last-commit/maciejwaloszczyk/Remus.svg?style=flat-square&label=Last%20Commit)](https://github.com/maciejwaloszczyk/Remus/commits/master)
 
-![Rufus logo](https://raw.githubusercontent.com/pbatard/rufus/master/res/icons/rufus-128.png)
+This is a macOS port of Rufus - The Reliable USB Formatting Utility.
 
-Rufus is a utility that helps format and create bootable USB flash drives.
+## About
 
-Features
---------
+Rufus macOS is a command-line utility that brings Rufus functionality to macOS. It provides:
 
-* Format USB, flash card and virtual drives to FAT/FAT32/NTFS/UDF/exFAT/ReFS/ext2/ext3
-* Create DOS bootable USB drives using [FreeDOS](https://www.freedos.org) or MS-DOS
-* Create BIOS or UEFI bootable drives, including [UEFI bootable NTFS](https://github.com/pbatard/uefi-ntfs)
-* Create bootable drives from bootable ISOs (Windows, Linux, etc.)
-* Create bootable drives from bootable disk images, including compressed ones
-* Create Windows 11 installation drives for PCs that don't have TPM or Secure Boot
-* Create [Windows To Go](https://en.wikipedia.org/wiki/Windows_To_Go) drives
-* Create VHD/DD, VHDX and FFU images of an existing drive
-* Create persistent Linux partitions
-* Compute MD5, SHA-1, SHA-256 and SHA-512 checksums of the selected image
-* Perform runtime validation of UEFI bootable media
-* Improve Windows installation experience by automatically setting up OOBE parameters (local account, privacy options, etc.)
-* Perform bad blocks checks, including detection of "fake" flash drives
-* Download official Microsoft Windows 8, Windows 10 or Windows 11 retail ISOs
-* Download [UEFI Shell](https://github.com/pbatard/UEFI-Shell) ISOs
-* Modern and familiar UI, with [38 languages natively supported](https://github.com/pbatard/rufus/wiki/FAQ#What_languages_are_natively_supported_by_Rufus)
-* Small footprint. No installation required.
-* Portable. Secure Boot compatible.
-* 100% [Free Software](https://www.gnu.org/philosophy/free-sw) ([GPL v3](https://www.gnu.org/licenses/gpl-3.0))
+- USB device detection and enumeration
+- Support for FAT32, ExFAT, and NTFS formatting
+- Safe device identification with VID/PID detection
+- Command-line interface optimized for macOS
 
-Compilation
------------
+## Features
 
-Use either Visual Studio 2022 or MinGW and then invoke the `.sln` or `configure`/`make` respectively.
+### Currently Implemented:
+- ✅ USB device detection using IOKit and DiskArbitration
+- ✅ Device information display (size, vendor, product, etc.)
+- ✅ Multiple filesystem support (FAT32, ExFAT, NTFS)
+- ✅ Safe device validation (removable USB devices only)
+- ✅ Volume labeling
+- ✅ Device unmounting before formatting
 
-#### Visual Studio
+### Planned Features:
+- 🔄 ISO image writing to USB devices
+- 🔄 Bootable USB creation
+- 🔄 Progress reporting during operations
+- 🔄 GUI interface using native macOS frameworks
+- 🔄 Support for additional filesystems (ext2/ext3/ext4, HFS+)
 
-Rufus is an OSI compliant Open Source project. You are entitled to
-download and use the *freely available* [Visual Studio Community Edition](https://www.visualstudio.com/vs/community/)
-to build, run or develop for Rufus. As per the Visual Studio Community Edition license,
-this applies regardless of whether you are an individual or a corporate user.
+## Building
 
-Additional information
-----------------------
+### Prerequisites:
+- macOS 10.12 or later
+- Xcode Command Line Tools
+- GCC or Clang
 
-Rufus provides extensive information about what it is doing, either through its
-easily accessible log, or through the [Windows debug facility](https://docs.microsoft.com/en-us/sysinternals/downloads/debugview).
+### Build Instructions:
 
-* [__Official Website__](https://rufus.ie)
-* [FAQ](https://github.com/pbatard/rufus/wiki/FAQ)
+```bash
+cd src/macos
+make
+```
 
-Enhancements/Bugs
------------------
+## Usage
 
-Please use the [GitHub issue tracker](https://github.com/pbatard/rufus/issues)
-for reporting problems or suggesting new features.
+### List USB Devices:
+```bash
+./rufus-macos -l
+# or
+./rufus-macos --list
+```
+
+### Format a USB Device:
+```bash
+# Format disk2 as FAT32 with label "MY_USB"
+sudo ./rufus-macos -d disk2 -f FAT32 -n MY_USB
+
+# Format disk3 as ExFAT
+sudo ./rufus-macos -d disk3 -f ExFAT
+```
+
+### Command Line Options:
+- `-l, --list`: List all USB devices
+- `-d, --device DEVICE`: Select device to format (e.g., disk2)
+- `-f, --filesystem TYPE`: Filesystem type (FAT32, ExFAT, NTFS)
+- `-n, --name LABEL`: Volume label
+- `-v, --verbose`: Verbose output
+- `-h, --help`: Show help message
+
+## Installation
+
+```bash
+make install
+```
+
+This will install `rufus-macos` to `/usr/local/bin/`.
+
+## Safety Features
+
+- Only lists and operates on removable USB devices
+- Requires user confirmation before formatting
+- Validates device existence before operations
+- Uses native macOS disk management APIs
+
+## Technical Implementation
+
+### Core Components:
+
+1. **Device Detection (`macos_device.c`)**:
+   - Uses IOKit to enumerate storage devices
+   - Filters for removable USB devices only
+   - Extracts device properties (VID/PID, size, vendor/product names)
+
+2. **Disk Operations**:
+   - Uses DiskArbitration framework for device management
+   - Leverages `diskutil` command for formatting operations
+   - Handles device unmounting automatically
+
+3. **Safety Mechanisms**:
+   - Multiple validation layers to prevent system disk formatting
+   - Clear user prompts and confirmations
+   - Comprehensive error handling
+
+### Key macOS APIs Used:
+- **IOKit**: For low-level device enumeration and property access
+- **DiskArbitration**: For disk management and mounting/unmounting
+- **Core Foundation**: For handling Apple's data types and property lists
+
+## Differences from Windows Rufus
+
+### Architecture Changes:
+- **No Win32 GUI**: Command-line interface instead of Windows dialogs
+- **IOKit instead of WinAPI**: Native macOS hardware abstraction
+- **DiskArbitration instead of DeviceIoControl**: macOS disk management
+- **diskutil integration**: Leverages macOS native formatting utilities
+
+### Limitations:
+- No GUI (command-line only for now)
+- Limited to basic formatting operations initially
+- NTFS support depends on macOS NTFS drivers
+
+## Development Roadmap
+
+### Phase 1 (Current): ✅ Basic Functionality
+- USB device detection and enumeration
+- Basic formatting support
+- Command-line interface
+
+### Phase 2 (Next): 🔄 Enhanced Features
+- ISO image writing capability
+- Bootable USB creation
+- Progress reporting and better error handling
+
+### Phase 3 (Future): 🔄 Advanced Features
+- Native macOS GUI using AppKit/SwiftUI
+- Advanced formatting options
+- Additional filesystem support
+
+### Phase 4 (Long-term): 🔄 Feature Parity
+- Feature parity with Windows Rufus where applicable
+- macOS-specific enhancements
+- Integration with macOS security model
+
+## Contributing
+
+This is a fork/port of the original Rufus project by Pete Batard. 
+
+### Original Rufus:
+- Repository: https://github.com/pbatard/rufus
+- Author: Pete Batard
+- License: GPL v3
+
+### macOS Port:
+- Maintained by: Maciej Wałoszczyk
+- License: GPL v3 (same as original)
+
+## License
+
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+## Acknowledgments
+
+- Pete Batard for the original Rufus application
+- The macOS developer community for IOKit and DiskArbitration documentation
+- All contributors to the original Rufus project
+
+---
+
+⚠️ **WARNING**: This software can erase data on your drives. Use with caution and always backup important data before formatting any device.
