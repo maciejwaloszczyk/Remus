@@ -1,5 +1,5 @@
 /*
- * Rufus macOS: The Reliable USB Formatting Utility for macOS  
+ * Remus: The Reliable USB Formatting Utility for macOS  
  * Device detection and enumeration for macOS
  * Copyright © 2025 Maciej Wałoszczyk
  *
@@ -28,7 +28,7 @@
 /*
  * Get list of USB storage devices on macOS
  */
-bool macos_get_usb_devices(macos_rufus_drive drives[], int *num_drives) {
+bool macos_get_usb_devices(macos_remus_drive drives[], int *num_drives) {
     CFMutableDictionaryRef matching_dict;
     io_iterator_t iter;
     io_object_t media;
@@ -95,7 +95,7 @@ bool macos_get_usb_devices(macos_rufus_drive drives[], int *num_drives) {
         }
         
         // Initialize the drive structure
-        memset(&drives[drive_count], 0, sizeof(macos_rufus_drive));
+        memset(&drives[drive_count], 0, sizeof(macos_remus_drive));
         
         // Get device properties
         if (!macos_get_device_properties(device_path, &drives[drive_count].props)) {

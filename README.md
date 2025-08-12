@@ -11,7 +11,7 @@ This is a macOS port of Rufus - The Reliable USB Formatting Utility.
 
 ## About
 
-Rufus macOS is a command-line utility that brings Rufus functionality to macOS. It provides:
+Remus is a command-line utility that brings Rufus functionality to macOS. It provides:
 
 - USB device detection and enumeration
 - Support for FAT32, ExFAT, and NTFS formatting
@@ -53,18 +53,18 @@ make
 
 ### List USB Devices:
 ```bash
-./rufus-macos -l
+./remus -l
 # or
-./rufus-macos --list
+./remus --list
 ```
 
 ### Format a USB Device:
 ```bash
 # Format disk2 as FAT32 with label "MY_USB"
-sudo ./rufus-macos -d disk2 -f FAT32 -n MY_USB
+sudo ./remus -d disk2 -f FAT32 -n MY_USB
 
 # Format disk3 as ExFAT
-sudo ./rufus-macos -d disk3 -f ExFAT
+sudo ./remus -d disk3 -f ExFAT
 ```
 
 ### Command Line Options:
@@ -81,7 +81,7 @@ sudo ./rufus-macos -d disk3 -f ExFAT
 make install
 ```
 
-This will install `rufus-macos` to `/usr/local/bin/`.
+This will install `remus` to `/usr/local/bin/`.
 
 ## Safety Features
 
@@ -158,7 +158,7 @@ This is a fork/port of the original Rufus project by Pete Batard.
 - Author: Pete Batard
 - License: GPL v3
 
-### macOS Port:
+### Remus (macOS Port):
 - Maintained by: Maciej Wałoszczyk
 - License: GPL v3 (same as original)
 

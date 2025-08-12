@@ -1,10 +1,10 @@
-# Rufus macOS Fork
+# Remus macOS Fork
 
 This is a macOS port of Rufus - The Reliable USB Formatting Utility.
 
 ## About
 
-Rufus macOS is a command-line utility that brings Rufus functionality to macOS. It provides:
+Remus is a command-line utility that brings Rufus functionality to macOS. It provides:
 
 - USB device detection and enumeration
 - Support for FAT32, ExFAT, and NTFS formatting

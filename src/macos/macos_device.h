@@ -1,6 +1,8 @@
 /*
- * Rufus macOS: The Reliable USB Formatting Utility for macOS
- * Device detection and enumeration for macOS
+ * Remus: The Reliable USB Formatting Utility for mac} macos_remus_drive;
+
+// Function prototypes
+bool macos_get_usb_devices(macos_remus_drive drives[], int *num_drives);* Device detection and enumeration for macOS - Header file
  * Copyright © 2025 Maciej Wałoszczyk
  *
  * This program is free software: you can redistribute it and/or modify
@@ -44,8 +46,8 @@ typedef struct macos_device_props {
     char      product_name[128];
 } macos_device_props;
 
-/* macOS equivalent of Windows RUFUS_DRIVE */
-typedef struct macos_rufus_drive {
+/* macOS equivalent of Windows REMUS_DRIVE */
+typedef struct macos_remus_drive {
     uint64_t size;
     char *device_path;
     char *name;
