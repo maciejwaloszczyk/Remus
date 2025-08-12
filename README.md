@@ -6,7 +6,7 @@
 </p>
 
 
-[![Latest Release](https://img.shields.io/github/release-pre/maciejwaloszczyk/Remus.svg?style=flat-square&label=Latest%20Release)](https://github.com/maciejwaloszczyk/Remus/releases)
+[![Latest Release](https://img.shields.io/github/v/release/maciejwaloszczyk/Remus?include_prereleases&sort=semver&style=flat-square&label=Latest%20Release)](https://github.com/maciejwaloszczyk/Remus/releases)
 [![Download Stats](https://img.shields.io/github/downloads/maciejwaloszczyk/Remus/total.svg?label=Downloads&style=flat-square)](https://github.com/maciejwaloszczyk/Remus/releases)
 [![Licence](https://img.shields.io/badge/license-GPLv3-blue.svg?style=flat-square&label=License)](https://www.gnu.org/licenses/gpl-3.0.en.html)
 [![Status](https://img.shields.io/badge/status-alpha-orange.svg?style=flat-square&label=Status)](https://github.com/maciejwaloszczyk/Remus)
